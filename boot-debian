@@ -1,0 +1,49 @@
+#!/usr/bin/python
+
+import getpass
+import json
+import keyring
+import packet
+import sys
+if len(sys.argv[1:]) < 1:
+    print "ERROR: Usage:" , sys.argv[0], "http://url.to/debian-installer.txt"
+    sys.exit(2)
+url=sys.argv[1]
+
+server_type="baremetal_2a"
+token = keyring.get_password("packet", "api_token")
+if token is None:
+    # Ask password securely on command line
+    token = getpass.getpass("Enter packet.net api token: ")
+    keyring.set_password("packet", "api_token", token)
+
+manager = packet.Manager(auth_token=token)
+projects = manager.list_projects()
+debian_id=projects[0].id
+
+capacity = manager.get_capacity()
+
+params = { "plan": server_type }
+prices = manager.get_spot_market_prices(params=params)
+
+# find facility with cheapest available price less than $0.5/h
+# ASK: limited vs unlimited in level?
+spot_price=0.5
+spot_site=""
+for site in prices:
+        price=prices[site][server_type]["price"]
+        print site + ": "+str(price)
+        if price<spot_price and capacity[site][server_type]["level"] != "unavailable":
+            spot_price=price
+            spot_site=site
+
+print "will use "+spot_site + ": "+str(spot_price)
+device = manager.create_device(project_id=debian_id,
+                               hostname='debian-installer-test',
+                               plan='baremetal_2a', facility=spot_site,
+                               spot_instance=True, spot_price_max=spot_price+0.1,
+                               billing_cycle='hourly', always_pxe=True,
+                               operating_system='custom_ipxe',
+                               ipxe_script_url=url)
+
+print(device)

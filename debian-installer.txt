@@ -1,0 +1,5 @@
+#!ipxe
+dhcp
+kernel http://deb.debian.org/debian/dists/stretch/main/installer-arm64/current/images/netboot/debian-installer/arm64/linux initrd=initrd.gz install auto=true priority=critical netcfg/choose_interface=enP2p1s0f1 url=https://url.to/preseed.cfg
+initrd --name initrd.gz http://deb.debian.org/debian/dists/stretch/main/installer-arm64/current/images/netboot/debian-installer/arm64/initrd.gz
+boot
